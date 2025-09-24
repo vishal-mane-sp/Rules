@@ -1,0 +1,43 @@
+import sailpoint.object.Group
+import sailpoint.object.Identity
+import sailpoint.api.SailPointContext
+import sailpoint.tools.GeneralException
+
+/**
+ * GroupAggregationRefresh Rule
+ * Sets the 'owner' of a group based on the 'ManagedBy' attribute
+ * when ManagedBy contains a fully qualified CN (Distinguished Name).
+ */
+
+if (group != null && context != null) {
+    try {
+        // Get the ManagedBy attribute
+        String managedByDN = group.getAttribute("ManagedBy")?.toString()
+        
+        if (managedByDN) {
+            // Extract CN from DN (e.g., CN=John Doe,OU=Users,...)
+            def cnMatcher = (managedByDN =~ /CN=([^,]+)/)
+            String cnName = cnMatcher ? cnMatcher[0][1] : null
+
+            if (cnName) {
+                // Lookup Identity by CN (assuming 'name' in IIQ matches CN)
+                def identities = context.getObjects(Identity.class, ["name": cnName])
+                if (identities && identities.size() > 0) {
+                    Identity ownerIdentity = identities[0]
+                    group.setOwner(ownerIdentity)
+                    log.info("Group '${group.getName()}' owner set to '${ownerIdentity.getName()}' from ManagedBy CN.")
+                } else {
+                    log.warn("No Identity found in IIQ with name '${cnName}' for group '${group.getName()}'.")
+                }
+            } else {
+                log.warn("Cannot extract CN from ManagedBy DN '${managedByDN}' for group '${group.getName()}'.")
+            }
+        } else {
+            log.warn("ManagedBy attribute is empty for group '${group.getName()}'.")
+        }
+    } catch (GeneralException e) {
+        log.error("Error setting owner for group '${group.getName()}': " + e.getMessage(), e)
+    }
+}
+
+return group
