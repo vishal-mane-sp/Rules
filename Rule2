@@ -1,0 +1,24 @@
+<Rule name="SetGroupOwnerRule" type="GroupAggregationRefresh">
+  <Description>
+    This rule sets the owner of all groups aggregated to the user with ID 1628553.
+  </Description>
+  <Source>
+    <![CDATA[
+    import sailpoint.object.Identity;
+
+    // Get the identity object for the fixed owner
+    Identity fixedOwner = context.getObjectById(Identity.class, "1628553");
+
+    // Check if we got the owner
+    if (fixedOwner == null) {
+        log.error("Owner with ID 1628553 not found in IdentityIQ!");
+    } else {
+        // Set the group owner
+        group.setOwner(fixedOwner);
+        log.debug("Set group owner to Identity 1628553 for group: " + group.getName());
+    }
+
+    return group;
+    ]]>
+  </Source>
+</Rule>
