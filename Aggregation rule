@@ -1,0 +1,64 @@
+CN=John Doe,OU=Users,DC=corp,DC=local
+```)  
+we need to parse that DN, extract something meaningful (like `CN=John Doe` or `sAMAccountName`) and then map it to an **Identity** in SailPoint IIQ.  
+
+Here’s a **refined SailPoint IIQ Aggregation Rule** tailored for AD’s `ManagedBy` DN:
+
+```xml
+<Rule name="SetEntitlementOwnerFromManagedBy" type="Aggregation" language="beanshell">
+  <Description>
+    This rule sets the entitlement owner from the AD ManagedBy attribute (Distinguished Name).
+  </Description>
+  <Source>
+    import sailpoint.object.*;
+    import sailpoint.api.*;
+    import java.util.regex.*;
+
+    if (entitlement != null) {
+        try {
+            String managedBy = (String) entitlement.getAttribute("ManagedBy");
+
+            if (managedBy != null && managedBy.trim().length() > 0) {
+                System.out.println("ManagedBy DN for entitlement " + entitlement.getName() + ": " + managedBy);
+
+                // Extract CN= value from DN
+                String cnValue = null;
+                Matcher matcher = Pattern.compile("CN=([^,]+)", Pattern.CASE_INSENSITIVE).matcher(managedBy);
+                if (matcher.find()) {
+                    cnValue = matcher.group(1).trim();
+                }
+
+                if (cnValue != null) {
+                    // Try to find Identity by displayName, sAMAccountName, or any correlated attribute
+                    Identity owner = context.getObjectByName(Identity.class, cnValue);
+
+                    if (owner == null) {
+                        // Optionally: try a different attribute mapping if displayName is not the right match
+                        // Example: lookup by sAMAccountName custom attribute
+                        QueryOptions qo = new QueryOptions();
+                        qo.addFilter(Filter.eq("accountName", cnValue));
+                        java.util.List matches = context.getObjects(Identity.class, qo);
+                        if (matches != null && !matches.isEmpty()) {
+                            owner = (Identity) matches.get(0);
+                        }
+                    }
+
+                    if (owner != null) {
+                        entitlement.setOwner(owner);
+                        System.out.println("Set owner of entitlement [" + entitlement.getName() + "] to [" + owner.getName() + "]");
+                    } else {
+                        System.out.println("No matching Identity found in IIQ for ManagedBy CN: " + cnValue);
+                    }
+                } else {
+                    System.out.println("Unable to parse CN from ManagedBy DN: " + managedBy);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error while setting entitlement owner from ManagedBy: " + e);
+            e.printStackTrace();
+        }
+    }
+
+    return entitlement;
+  </Source>
+</Rule>
