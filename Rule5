@@ -1,0 +1,58 @@
+<Rule name="GroupAggregationRefreshRule"
+      type="GroupAggregationRefresh"
+      language="beanshell">
+  <Source>
+    <![CDATA[
+    /*
+     * Rule: GroupAggregationRefreshRule
+     * Purpose: During group aggregation, read the "ManagedBy" attribute (AD DN),
+     * extract the CN, resolve it to an Identity in IIQ, and set that Identity as the group owner.
+     *
+     * Variables available:
+     *  group      -> The SailPoint Group object being built/refreshed.
+     *  context    -> SailPointContext
+     *  application-> The Application object being aggregated
+     *  state      -> Map<String,Object> for persisting data across calls
+     */
+
+    import sailpoint.object.Identity;
+
+    // Fetch the ManagedBy attribute from the group object
+    String managedBy = (String) group.getAttribute("ManagedBy");
+
+    if (managedBy != null && !managedBy.trim().isEmpty()) {
+        // Example: "CN=John Smith,OU=Users,DC=example,DC=com"
+        String cnValue = managedBy;
+
+        // Extract CN from DN
+        if (managedBy.startsWith("CN=")) {
+            int commaIndex = managedBy.indexOf(",");
+            if (commaIndex > 3) {
+                cnValue = managedBy.substring(3, commaIndex); // -> "John Smith"
+            } else {
+                cnValue = managedBy.substring(3);
+            }
+        }
+
+        // Try resolving CN to Identity object in IIQ
+        try {
+            Identity ownerIdentity = context.getObjectByName(Identity.class, cnValue);
+
+            if (ownerIdentity != null) {
+                // Found a matching Identity -> set it as owner
+                group.setOwner(ownerIdentity.getName());
+                System.out.println("Group [" + group.getName() + "] owner set to Identity [" + ownerIdentity.getName() + "]");
+            } else {
+                // If not found, fallback to just storing CN
+                group.setOwner(cnValue);
+                System.out.println("Group [" + group.getName() + "] owner set to CN [" + cnValue + "] (Identity not found)");
+            }
+        } catch (Exception e) {
+            System.out.println("Error resolving ManagedBy [" + managedBy + "] CN [" + cnValue + "]: " + e);
+            // fallback to CN
+            group.setOwner(cnValue);
+        }
+    }
+    ]]>
+  </Source>
+</Rule>
