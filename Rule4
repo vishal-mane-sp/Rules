@@ -1,0 +1,41 @@
+<Rule name="GroupAggregationRefreshRule"
+      type="GroupAggregationRefresh"
+      language="beanshell">
+  <Source>
+    <![CDATA[
+    /*
+     * This rule executes during Group Aggregation in IdentityIQ.
+     * It is called for each group as the data is being refreshed.
+     *
+     * Variables available:
+     *  group      -> The SailPoint Group object being built/refreshed.
+     *  context    -> SailPointContext
+     *  application-> The Application object being aggregated
+     *  state      -> Map<String,Object> for persisting data across calls
+     */
+
+    import sailpoint.object.Identity;
+
+    // Fetch the ManagedBy attribute from the group object
+    String managedBy = (String) group.getAttribute("ManagedBy");
+
+    if (managedBy != null && !managedBy.trim().isEmpty()) {
+        // In AD, ManagedBy usually stores a DN (Distinguished Name).
+        // You may need to parse CN or map DN to an Identity in IIQ.
+        
+        // Example: directly store the DN as owner
+        group.setOwner(managedBy);
+
+        // --- If you want to resolve DN -> Identity object ---
+        try {
+            Identity ownerIdentity = context.getObjectByName(Identity.class, managedBy);
+            if (ownerIdentity != null) {
+                group.setOwner(ownerIdentity.getName());
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to resolve ManagedBy DN: " + managedBy + " Error: " + e);
+        }
+    }
+    ]]>
+  </Source>
+</Rule>
