@@ -1,0 +1,49 @@
+import sailpoint.object.Identity;
+import sailpoint.object.ResourceObject;
+import sailpoint.object.Application;
+import org.apache.log4j.Logger;
+import org.apache.log4j.Level;
+import sailpoint.object.ManagedAttribute;
+
+// Initialize logger
+Logger log = Logger.getLogger("sailpoint.rule.GroupAggregationRefresh");
+
+// Fetch the ManagedBy attribute from the group object
+String managedBy = (String) accountGroup.getAttribute("ManagedBy");
+
+if (managedBy != null && !managedBy.trim().isEmpty()) {
+
+    // Example: "CN=John Smith,OU=Users,DC=example,DC=com"
+    String cnValue = managedBy;
+
+    // Extract CN from DN
+    if (managedBy.startsWith("CN=")) {
+        int commaIndex = managedBy.indexOf(",");
+        if (commaIndex > 3) {
+            cnValue = managedBy.substring(3, commaIndex); // -> "John Smith"
+        } else {
+            cnValue = managedBy.substring(3);
+        }
+    }
+
+    // Try resolving CN to Identity object in IIQ
+    try {
+        Identity ownerIdentity = context.getObjectByName(Identity.class, cnValue);
+
+        if (ownerIdentity != null) {
+            // Found a matching Identity -> set it as owner
+            accountGroup.setOwner(ownerIdentity.getName());
+            log.info("accountGroup [" + accountGroup.getName() +
+                     "] owner set to Identity [" + ownerIdentity.getName() + "]");
+        } else {
+            // If not found, fallback to just storing CN
+            log.warn("accountGroup [" + accountGroup.getName() +
+                     "] owner set to CN [" + cnValue + "] (Identity not found)");
+        }
+    } catch (Exception e) {
+        log.error("Error resolving ManagedBy [" + managedBy +
+                  "] CN [" + cnValue + "]: " + e, e);
+    }
+}
+
+return accountGroup;
