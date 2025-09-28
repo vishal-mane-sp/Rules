@@ -1,0 +1,49 @@
+```java
+<?xml version="1.0" encoding="UTF-8"?>
+<Rule name="ExtractManagedByCN" type="GroupAggregationRefresh">
+  <Description>
+    This rule extracts the CN value from the ManagedBy attribute in the group object
+    (e.g. CN=1060252,OU=Accounts,OU=ITSC,DC=zone1,DC=scbdev,DC=net)
+    and sets it as the owner of the group.
+  </Description>
+  <Source>
+    import sailpoint.object.Identity;
+    import sailpoint.object.ManagedAttribute;
+    import org.apache.log4j.Logger;
+
+    Logger logger = Logger.getLogger("ExtractManagedByCN");
+
+    // ManagedBy attribute from group object
+    String managedBy = (String) group.getAttribute("ManagedBy");
+
+    if (managedBy != null && managedBy.startsWith("CN=")) {
+        try {
+            // Split by comma, first part will be CN=xxxxxxx
+            String cnPart = managedBy.split(",")[0];
+
+            // Remove "CN=" prefix to get the actual value
+            String cnValue = cnPart.substring(3);
+
+            logger.info("Extracted CN value from ManagedBy: " + cnValue);
+
+            // Lookup identity with that CN value
+            Identity owner = context.getObjectByName(Identity.class, cnValue);
+
+            if (owner != null) {
+                group.setOwner(owner);
+                logger.info("Group owner set to Identity: " + owner.getName());
+            } else {
+                logger.warn("No Identity found with name: " + cnValue);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error while parsing ManagedBy attribute: " + e);
+        }
+    } else {
+        logger.warn("ManagedBy attribute is null or not starting with CN= ");
+    }
+
+    return group;
+  </Source>
+</Rule>
+```
