@@ -1,0 +1,35 @@
+<Rule name="MergeEmployeeDetails" type="CertificationEntityCustomization">
+    <Description>
+        Merge EmployeeID, First Name and Last Name into one display attribute
+    </Description>
+
+    <Source>
+    <![CDATA[
+        import sailpoint.object.CertificationEntity;
+        import sailpoint.api.CertificationManager;
+
+        // 'entity' object will be passed by IIQ runtime
+        if (entity != null) {
+            try {
+                String employeeId = entity.getAttribute("employeeID");
+                String firstName  = entity.getAttribute("firstname");
+                String lastName   = entity.getAttribute("lastname");
+
+                if (employeeId == null) employeeId = "";
+                if (firstName == null) firstName = "";
+                if (lastName == null) lastName = "";
+
+                // Format: John Smith (E12345)
+                String display = firstName + " " + lastName + " (" + employeeId + ")";
+
+                // Set new merged attribute to show in UI
+                entity.addDisplayAttribute("mergedEmployeeDetails", display);
+            } catch (Exception ex) {
+                log.error("Error merging employee details: " + ex);
+            }
+        }
+
+        return entity;
+    ]]>
+    </Source>
+</Rule>
