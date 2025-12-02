@@ -1,0 +1,14 @@
+Hi Loga,
+
+While working on the task  “Certification screen - Merge first three columns in one as UserName” I found that only CertificationEntityCustomization rule is not sufficient, it won’t populate the values in the required column along with that we need to following steps.
+
+1)	Create a CertificationItem ObjectConfig object
+2)	Add searchable extended attributes
+3)	Generate database scripts
+4)	UI Config changes
+5)	Populate the certification item extended attribute
+
+I found following document on SailPoint Community, could you please review and give your feedback on this?
+
+Regards
+Vishal 
