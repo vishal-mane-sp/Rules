@@ -1,0 +1,40 @@
+<Rule name="CustomizeFirstName" type="CertificationEntityCustomization">
+    <Description>
+        Customize firstname column value in Certification UI
+    </Description>
+
+    <Source><![CDATA[
+        import sailpoint.object.CertificationEntity;
+        import sailpoint.object.Identity;
+        import sailpoint.tools.Util;
+
+        // entity = current certification entity being displayed
+        Identity identity = entity.getIdentity();
+
+        if (identity != null) {
+            String firstname = identity.getAttribute("firstname");
+            String gender = identity.getAttribute("gender");
+
+            if (!Util.isEmpty(firstname)) {
+
+                // Convert firstname to Proper Case
+                firstname = firstname.substring(0,1).toUpperCase() +
+                            firstname.substring(1).toLowerCase();
+
+                // Prefix based on gender if available
+                if (!Util.isEmpty(gender)) {
+                    if ("M".equalsIgnoreCase(gender)) {
+                        firstname = "Mr. " + firstname;
+                    } else if ("F".equalsIgnoreCase(gender)) {
+                        firstname = "Ms. " + firstname;
+                    }
+                }
+
+                // Final value set back to entity
+                entity.setAttribute("firstname", firstname);
+            }
+        }
+
+        return entity;
+    ]]></Source>
+</Rule>
